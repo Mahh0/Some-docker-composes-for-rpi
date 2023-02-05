@@ -1,0 +1,62 @@
+version: "3"
+services:
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    # line above must be uncommented to allow external containers to connect. See https://github.com/qdm12/gluetun/wiki/Connect-a-container-to-gluetun#external-container-to-gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 8888:8888/tcp # HTTP proxy
+      - 8388:8388/tcp # Shadowsocks
+      - 8388:8388/udp # Shadowsocks
+      - 8090:8090
+      - 59375:59375          # PORT QBITTORRENT
+      - 59375:59375/udp      # PORT QBITTORRENT
+      - 6881:6881
+      - 6881:6881/udp
+    volumes:
+      - /srv/mediaserver/gluetun:/gluetun
+    environment:
+      # See https://github.com/qdm12/gluetun/wiki
+      - VPN_SERVICE_PROVIDER=mullvad
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=
+      - WIREGUARD_PUBLIC_KEY=
+      - WIREGUARD_ADDRESSES=10.66.243.154/32
+      - SERVER_HOSTNAMES=be-bru-wg-102,be-bru-wg-103
+      - TZ=Europe/Paris
+    restart: always
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:arm64v8-4.4.3.1-r1-ls206
+    container_name: qbittorrent
+    environment:
+      - PUID=1005
+      - PGID=1005
+      - TZ=Europe/Paris
+      - WEBUI_PORT=8090
+    volumes:
+      - /srv/mediaserver/qbittorrent:/config
+      - /srv/samba/Downloads:/downloads
+    restart: always
+    network_mode: "service:gluetun"
+    
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    user: 1005:1005
+    network_mode: 'host'
+    volumes:
+      - /srv/mediaserver/jellyfin/config:/config
+      - /srv/mediaserver/jellyfin/cache:/cache
+      - /srv/samba/Downloads:/media
+    restart: 'unless-stopped'
+    # Optional - alternative address used for autodiscovery
+    environment:
+      - JELLYFIN_PublishedServerUrl=http://192.168.1.100
+    # Optional - may be necessary for docker healthcheck to pass if running in host network mode
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
