@@ -1,0 +1,24 @@
+version: "2.1"
+services:
+  wireguard_iut53:
+    image: linuxserver/wireguard
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1006
+      - PGID=1006
+      - TZ=Europe/Paris
+      - SERVERURL=public_ip_address
+      - SERVERPORT=53
+      - PEERS=2
+      - PEERDNS=192.168.1.100
+      - INTERNAL_SUBNET=10.13.13.0
+      - ALLOWEDIPS=192.168.1.0/24
+    volumes:
+      - /srv/wgserver/config:/config
+      - /lib/modules:/lib/modules
+    ports:
+      - 51821:51820/udp
+    restart: always
